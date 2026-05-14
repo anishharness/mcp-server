@@ -340,3 +340,15 @@
 - Split query strings out of `RequestOptions.path` before base-path de-duplication and query assembly.
 - Merged path query params into the generated `URLSearchParams` before applying `options.params`, preserving explicit override behavior.
 - Verified with `pnpm test tests/client/harness-client.test.ts`, `pnpm typecheck`, `pnpm build`, and full `pnpm test`.
+
+## Slack Follow-up: Harness Code PR Close Endpoint (2026-05-14)
+- [ ] Add regression coverage for closing a PR through `harness_update`
+- [ ] Add regression coverage for `harness_execute` action `close`
+- [ ] Route PR state changes through the dedicated Harness Code state endpoint
+- [ ] Run focused tests, typecheck, build, and full tests
+- [ ] Commit and push the fix
+
+### Plan
+- Keep metadata edits (`title`, `description`) on the existing PR PATCH endpoint.
+- Route state transitions (`state: "closed"` or `state: "open"`) to `POST /code/api/v1/repos/{repoIdentifier}/pullreq/{prNumber}/state`.
+- Add an explicit `close` execute action so agents do not guess a missing action after update attempts fail.
