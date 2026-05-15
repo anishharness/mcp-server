@@ -531,6 +531,15 @@ export class Registry {
       if (shouldUseProject(requestedScope) && explicitScopeValues.projectId && !input.project_id) input = { ...input, project_id: explicitScopeValues.projectId };
     }
 
+    if (spec.handler) {
+      return spec.handler({
+        client,
+        input,
+        config: resolvedConfig,
+        signal,
+      });
+    }
+
     // Build path with substitutions (or pathBuilder when present)
     let path: string;
     if (spec.pathBuilder) {
