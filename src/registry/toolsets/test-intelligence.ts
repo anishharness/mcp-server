@@ -15,6 +15,7 @@ type QueryParams = Record<string, string | number | boolean | string[] | undefin
 interface FailedTestCase {
   stage_id: string;
   suite_name: string;
+  class_name?: string;
   test_name?: string;
   status: string;
   duration?: string | number;
@@ -25,6 +26,7 @@ interface FailedTestCase {
 interface FailedTestCaseOutput {
   stage_id: string;
   suite_name: string;
+  class_name: string;
   test_method: string;
 }
 
@@ -138,11 +140,13 @@ function normalizeFailedCases(raw: unknown, stageId: string, suiteName: string):
         status: getString(testCase, ["status"]) ?? FAILED_STATUS,
       };
 
+      const className = getString(testCase, ["class_name", "className", "classname", "test_class", "testClass"]);
       const testName = getString(testCase, ["test_name", "testName", "name", "identifier"]);
       const duration = getStringOrNumber(testCase, ["duration", "duration_ms", "durationMs", "time"]);
       const errorMessage = getString(testCase, ["error_message", "errorMessage", "failure_message", "failureMessage", "message"]);
       const stackTrace = getString(testCase, ["stack_trace", "stackTrace", "stacktrace", "error_stack_trace", "errorStackTrace"]);
 
+      if (className) result.class_name = className;
       if (testName) result.test_name = testName;
       if (duration !== undefined) result.duration = duration;
       if (errorMessage) result.error_message = errorMessage;
@@ -156,13 +160,14 @@ function toFailureOutput(item: FailedTestCase): FailedTestCaseOutput {
   return {
     stage_id: item.stage_id,
     suite_name: item.suite_name,
+    class_name: item.class_name ?? "",
     test_method: item.test_name ?? "",
   };
 }
 
 function failuresText(items: FailedTestCase[]): string {
   const rows = items
-    .map((item) => [item.stage_id, item.suite_name, item.test_name ?? ""].join("\t"))
+    .map((item) => [item.stage_id, item.suite_name, item.class_name ?? "", item.test_name ?? ""].join("\t"))
     .join("\n");
 
   return `Number of failed tests: ${items.length}${rows ? `\n\n${rows}` : ""}`;
@@ -275,7 +280,7 @@ async function listTestFailures({ client, input, config, signal }: EndpointHandl
 
   return {
     failed_tests: items.length,
-    format: "stage_id<TAB>suite_name<TAB>test_method",
+    format: "stage_id<TAB>suite_name<TAB>class_name<TAB>test_method",
     text: failuresText(items),
     items: items.map(toFailureOutput),
     pipeline_id: pipelineId,
