@@ -7,6 +7,7 @@ import type { AuditManager } from "../audit/manager.js";
 import type { AuditContext, AuditEvent } from "../audit/types.js";
 import { createLogger } from "../utils/logger.js";
 import { buildDeepLink, appendStoreType } from "../utils/deep-links.js";
+import { isFormDataBody } from "../utils/type-guards.js";
 
 // Import all toolsets
 import { pipelinesToolset } from "./toolsets/pipelines.js";
@@ -37,6 +38,7 @@ import { accessControlToolset } from "./toolsets/access-control.js";
 import { settingsToolset } from "./toolsets/settings.js";
 import { platformToolset } from "./toolsets/platform.js";
 import { testIntelligenceToolset } from "./toolsets/test-intelligence.js";
+import { fileStoreToolset } from "./toolsets/file-store.js";
 
 import { visualizationsToolset } from "./toolsets/visualizations.js";
 import { governanceToolset } from "./toolsets/governance.js";
@@ -146,6 +148,7 @@ const ALL_TOOLSETS: ToolsetDefinition[] = [
   settingsToolset,
   platformToolset,
   testIntelligenceToolset,
+  fileStoreToolset,
 
   visualizationsToolset,
   governanceToolset,
@@ -685,14 +688,20 @@ export class Registry {
     // Validate required fields if bodySchema is defined.
     // When bodyWrapperKey is set, the bodyBuilder wraps user fields inside that
     // key (e.g. { project: { identifier, name } }), so we validate the inner object.
+    // For FormData bodies, validate against the original input.body instead.
     if (spec.bodySchema && body && typeof body === "object") {
-      const bodyRecord = body as Record<string, unknown>;
-      const payload =
+      let payload: Record<string, unknown>;
+      if (isFormDataBody(body) && input.body != null && typeof input.body === "object") {
+        payload = input.body as Record<string, unknown>;
+      } else if (
         spec.bodyWrapperKey &&
-        bodyRecord[spec.bodyWrapperKey] != null &&
-        typeof bodyRecord[spec.bodyWrapperKey] === "object"
-          ? (bodyRecord[spec.bodyWrapperKey] as Record<string, unknown>)
-          : bodyRecord;
+        (body as Record<string, unknown>)[spec.bodyWrapperKey] != null &&
+        typeof (body as Record<string, unknown>)[spec.bodyWrapperKey] === "object"
+      ) {
+        payload = (body as Record<string, unknown>)[spec.bodyWrapperKey] as Record<string, unknown>;
+      } else {
+        payload = body as Record<string, unknown>;
+      }
       const missing = spec.bodySchema.fields
         .filter(f => f.required && payload[f.name] === undefined)
         .map(f => f.name);
